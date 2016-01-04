@@ -9,9 +9,10 @@ if (!(isset($action))){
 	exit;
 }
 
+//test
 //	$mysqli = $mysqli = new mysqli("mysql.main-hosting.com", "u277145571_admin", "pass_word", "u277145571_db");
 //	$mysqli = new mysqli($hostName, "root", "pass_word", "dev_schema");
-
+// test xxx
 $chat = new Chat();
 
 if ($action == "getUsers"){
