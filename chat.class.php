@@ -7,9 +7,10 @@
  * Time: 0:23
  */
 
-
+define('HISTORY_PAGE_SIZE', 10);
 class Chat
 {
+
 
     private $mysqli;
 
@@ -24,16 +25,19 @@ class Chat
         $this->mysqli->close();
     }
 
-    public function setMessageReaded($fromUser){
+    public function setMessageRead($curUser, $companion){
 
         $sql = "UPDATE messages
 				SET is_readed = 1
-				WHERE to_user = {$fromUser}
+				WHERE from_user = {$companion}
+				    AND to_user = {$curUser}
 					AND is_readed = 0";
         $this->mysqli->query($sql);
     }
 
-    public function getHistory($fromUser, $toUser){
+    public function getHistory($curUser, $companion, $page = 0){
+
+        $startRow = HISTORY_PAGE_SIZE*$page;
 
         $sql = "SELECT * FROM
 					(SELECT msg_text,
@@ -41,11 +45,11 @@ class Chat
 						to_user,
 						create_date
 					FROM messages
-					  WHERE from_user IN ({$fromUser}, {$toUser})
-						 AND to_user IN ({$fromUser}, {$toUser})
+					  WHERE from_user IN ({$curUser}, {$companion})
+						 AND to_user IN ({$curUser}, {$companion})
 					 ORDER BY create_date DESC
-					 LIMIT 0 , 10
-					)T
+					 LIMIT {$startRow} ," . HISTORY_PAGE_SIZE .
+					")T
 				ORDER BY create_date ASC";
         $result = $this->mysqli->query($sql);
 
@@ -54,29 +58,41 @@ class Chat
             $history[] = $row;
         }
 
-        $this->setMessageReaded($fromUser);
+        $this->setMessageRead($curUser, $companion);
 
         return $history;
     }
 
-    public function updateHistory($fromUser){
+    public function getUnreadMessages($curUser, $companion){
 
         $sql = "SELECT msg_text,
 					from_user,
 					to_user,
 					create_date
 				FROM messages
-				WHERE to_user = {$fromUser}
+				WHERE from_user = {$companion}
+				    AND to_user = {$curUser}
 					AND is_readed = 0";
+
         $result = $this->mysqli->query($sql);
         $history = array();
         while ($row = mysqli_fetch_assoc($result)) {
             $history[] = $row;
         }
 
-        $this->setMessageReaded($fromUser);
+        $this->setMessageRead($curUser, $companion);
         return $history;
 
+    }
+
+    public function updateHistory($curUser, $companion){
+        $unreadMessages = $this->getUnreadMessages($curUser, $companion);
+        $unreadMessagesCount = $this->getIncomingMessagesCount($curUser);
+        $result = array(
+                        "unreadMsgs"=>$unreadMessages,
+                        "unreadMsgsCount"=>$unreadMessagesCount
+                        );
+        return $result;
     }
 
     public function getUsers($excludeUserId = -1){
@@ -107,6 +123,22 @@ class Chat
 
     public function test(){
         echo "Test OK!";
+    }
+
+    public function getIncomingMessagesCount($curUser){
+        $sql = "SELECT from_user as user_id, count(from_user) as msgs_count
+                FROM messages
+                WHERE to_user = {$curUser}
+                  AND is_readed = 0
+                GROUP BY from_user";
+        $result = $this->mysqli->query($sql);
+        $messagesCount = array();
+        while ($row = mysqli_fetch_assoc($result)) {
+            $messagesCount[] = $row;
+        };
+
+        return $messagesCount;
+
     }
 
 }

@@ -17,7 +17,7 @@
 
         <ul id="user_list">
             {{#each users}}
-            <li class="user_item" id="{{this.id}}">{{this.name}}</li>
+            <li class="user_item" id="{{id}}" user-name="{{name}}">{{name}}</li>
             {{/each}}
         </ul>
 
@@ -64,7 +64,7 @@
         </div>
     </div>	
   
-    <div id="history">
+    <div id="history" page-index="0">
 
     </div>
 </div>

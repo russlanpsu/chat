@@ -28,10 +28,13 @@ $(function(){
 		}
 	});		
 
-	$("#toUser").change(function(){
+	/*$("#toUser").change(function(){
 		doAction("getHistory");
-		setInterval(function(){doAction("updateHistory")}, 2000);
-	});
+
+		//setInterval(function(){doAction("updateHistory")}, 2000);
+		doAction("updateHistory")
+
+	});*/
 	
 	$("#btnSend").click(function(){
 		sendMessage();
@@ -46,6 +49,28 @@ $(function(){
 	
 	$('#msgField').bind('input propertychange', function() {
 		$("#status").html("");
+	});
+
+	$('#history').scroll(function(){
+
+		var $this = $(this);
+		console.log($this.scrollTop());
+
+		if ($this.scrollTop() == 0){
+			//$($this.children()[0]).before('<div>test</div>');
+
+			var pageIndex = ~~$this.attr('page-index');
+			if (pageIndex != -1) {
+				pageIndex += 1;
+				var isLastPage = getHistory(pageIndex);
+				if (isLastPage) {
+					pageIndex = -1;
+				}
+				$this.attr('page-index', pageIndex);
+			}
+
+		}
+
 	});
 
 });
@@ -68,19 +93,35 @@ function CreateUsersList_old(targetListId, users, excludedUserId){
     }
 };
 
-function renderTemplate(tmplId, target, context, append){
+function renderTemplate(tmplId, target, context, appendKind){
 	var $tmpl = $('#' + tmplId);
 
 	var template = Handlebars.compile($tmpl.html());
 	var rendered = template(context);
 
-	if (append === undefined){
-		$('#' + target).html(rendered);
-	}else if (append === true){
-		$('#' + target).append(rendered);
+	switch (appendKind){
+
+		case 'before':
+
+			var $target = $('#' + target);
+			var firstChild = $target.children()[0];
+			$(firstChild).before(rendered);
+
+			$target.scrollTop($(firstChild).offset().top);
+
+			break;
+
+		case 'insert':
+
+			$('#' + target).html(rendered);
+			break;
+
+		case 'append':
+
+			$('#' + target).append(rendered);
+			break;
+
 	}
-
-
 }
 
 function CreateUsersList(users, excludedUserId){
@@ -110,7 +151,7 @@ function CreateUsersList(users, excludedUserId){
 
 	var context = {users: users};
 
-	renderTemplate('tmpl_user_list', 'cont_user_list', context);
+	renderTemplate('tmpl_user_list', 'cont_user_list', context, 'insert');
 
 	$('.user_item').click(function(){
 	//	alert(this.getAttribute("id"));
@@ -119,10 +160,16 @@ function CreateUsersList(users, excludedUserId){
 			$($activeUser[0]).removeClass('active_user');
 		};
 
-		$(this).addClass('active_user');
+		$this = $(this);
+		$this.addClass('active_user');
+		$this.html($this.attr('user-name'));
+
+		$('#history').attr('page-index', 0);
+
 	//	this.classList.add('active_user');
 		doAction("getHistory");
-		setInterval(function(){doAction("updateHistory")}, 2000);
+		setInterval(function(){doAction('updateHistory')}, 2000);
+		//doAction("updateHistory");
 	})
 
 };
@@ -136,50 +183,12 @@ function sendMessage(){
 //	var $toUser = $("#toUser option:selected");
 	var $toUser = $($(".active_user")[0]);
 	
-	var fromUserId = $fromUser.attr("id");
-	var toUserId = $toUser.attr("id");
-	
-	//$.ajax({
-	//	//url: 'chat.php',
-	//	url: 'history.php',
-	//	type: 'POST',
-	///*	data: JSON.stringify({action: "insertMessage",
-	//						fromUser: fromUserId,
-	//						toUser: toUserId,
-	//						msg: msgText}),
-	//	contentType: 'application/json; charset=utf-8',*/
-	//	data: {	action: "insertMessage",
-	//			fromUser: fromUserId,
-	//			toUser: toUserId,
-	//			msg: msgText},
-	//	dataType: 'json',
-	//	async: true,
-	//	success: function(){
-	//
-     //       var histDiv = document.getElementById("history");
-     //       var msg = {	from_user: fromUserId,
-     //              		msg_text: msgText,
-	//					create_date: new Date().toLocaleTimeString(),
-	//					isOutcoming: true
-	//					};
-    //
-	//		var messages = [msg];
-     //       //appendMessageToHistory_old(histDiv, fromUserId, msg);
-	//		appendMessagesToHistory(messages, fromUserId);
-    //
-     //       histDiv.scrollTop = histDiv.scrollHeight;
-	//		$("#status").text("Сообщение отправлено");
-     //       $msgField.val("");
-     //
-	//	},
-	//	error: function(){
-	//		alert("error");
-	//	}
-	//});
+	var fromUserId = $fromUser.attr('id');
+	var toUserId = $toUser.attr('id');
 
 
 	$.post('history.php',
-			{action: "insertMessage",
+			{action: 'insertMessage',
 				fromUser: fromUserId,
 				toUser: toUserId,
 				msg: msgText},
@@ -204,39 +213,6 @@ function sendMessage(){
 
 			}
 	)
-};		
-
-
-/* переделать на шаблоны */
-function appendMessageToHistory_old(parent, fromUserId, histItem){
-
-	var dtSpan = document.createElement("span");
-	dtSpan.classList.add("date-caption");
-	dtSpan.innerHTML = histItem.create_date;
-
-	var divWrapper = document.createElement("div");
-
-	divWrapper.classList.add("msg-wrapper");
-	var histElement = document.createElement("div");
-	histElement.classList.add("msg-text");
-	if (histItem.from_user == fromUserId){
-
-		divWrapper.classList.add("right");
-		divWrapper.appendChild(dtSpan);
-		histElement.classList.add("msg-text");
-		histElement.classList.add("out_msg");
-
-		divWrapper.appendChild(histElement);
-	}else{
-		divWrapper.classList.add("left");
-		histElement.classList.add("msg-text");
-		histElement.classList.add("in_msg");
-		divWrapper.appendChild(histElement);
-		divWrapper.appendChild(dtSpan);
-	};
-
-    histElement.innerHTML = histItem.msg_text;
-    parent.appendChild(divWrapper);
 }
 
 function appendMessagesToHistory(messages, fromUserId){
@@ -245,7 +221,81 @@ function appendMessagesToHistory(messages, fromUserId){
 		msg.isOutcoming = (msg.from_user == fromUserId);
 	});
 	var context = {messages: messages};
-	renderTemplate('tmpl_msg_history', 'history', context, true);
+	renderTemplate('tmpl_msg_history', 'history', context, 'append');
+
+}
+
+function updateIncomingMessagesCount(messagesCount){
+	$('.user_item').each(function(){
+		var $this = $(this);
+		var userId = $this.attr('id');
+		for(var i=0; i<messagesCount.length; i++){
+			var item=messagesCount[i];
+			if (userId == item.user_id){
+				$this.html($this.attr('user-name') + ' (' + item.msgs_count + ')');
+				break;
+			}
+		}
+	});
+}
+
+//	временное решение
+function getHistory(pageIndex){
+	var result;
+	var $fromUser = $("#fromUser option:selected");
+//	var $toUser = $("#toUser option:selected");
+	var $toUser = $($(".active_user")[0]);
+
+	var fromUserId = $fromUser.attr("id");
+	var toUserId = $toUser.attr("id");
+
+	/*$.post('history.php',
+
+		{action: 'getHistory',
+			fromUser: fromUserId,
+			toUser: toUserId,
+			historyPageIndex: pageIndex},
+
+		function(data){
+			var history = JSON.parse(data);
+
+			history.forEach(function(msg){
+				msg.isOutcoming = (msg.from_user == fromUserId);
+			});
+
+			var context = {messages: history};
+			renderTemplate('tmpl_msg_history', 'history', context, 'before');
+
+		});*/
+	$.ajax({
+		type: 'POST',
+
+		url: 'history.php',
+
+		data: {action: 'getHistory',
+			fromUser: fromUserId,
+			toUser: toUserId,
+			historyPageIndex: pageIndex},
+
+		async: false,
+
+		success: function(data) {
+			var history = JSON.parse(data);
+
+			history.forEach(function (msg) {
+				msg.isOutcoming = (msg.from_user == fromUserId);
+			});
+
+			var context = {messages: history};
+			renderTemplate('tmpl_msg_history', 'history', context, 'before');
+
+			result = (history.length == 0);
+
+		}
+
+	});
+
+	return result;
 
 }
 
@@ -254,35 +304,41 @@ function doAction(action){
 //	var $toUser = $("#toUser option:selected");
 	var $toUser = $($(".active_user")[0]);
 	
-	var fromUserId = $fromUser.attr("id");
-	var toUserId = $toUser.attr("id");
+	var fromUserId = $fromUser.attr('id');
+	var toUserId = $toUser.attr('id');
 	
 	if (toUserId == -1){
 		return;
 	}
 	
-	var fromUserName = $fromUser.text();
-	var toUserName = $toUser.text();
-	
-	$.post("history.php",
+	$.post('history.php',
           
 		{action: action,
 		fromUser: fromUserId,
 		toUser: toUserId},
           
-		function(data){		
+		function(data){
 
-			if (action == 'getHistory'){
-				$('.msg-wrapper').remove();
+			var histDiv = document.getElementById('history');
+			var receivedData = JSON.parse(data);
+			var history;
+
+			switch (action) {
+
+				case 'getHistory':
+
+					history = receivedData;
+					$('.msg-wrapper').remove();
+					break;
+
+				case 'updateHistory':
+
+					history = receivedData.unreadMsgs;
+					updateIncomingMessagesCount(receivedData.unreadMsgsCount);
+					break;
 
 			}
-			var histDiv = document.getElementById("history");
-            var history = JSON.parse(data);
-          /*
-			 for (var i=0; i<history.length; i++){
-			 var histItem = history[i];
-			 appendMessageToHistory(histDiv, fromUserId, histItem);
-			 }*/
+
 			if (history.length > 0){
 				appendMessagesToHistory(history, fromUserId);
                 histDiv.scrollTop = histDiv.scrollHeight;

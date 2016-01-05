@@ -36,13 +36,20 @@ switch ($action){
 
 	case "getHistory":
 
-		$history = $chat->getHistory($fromUser, $toUser);
+		if (isset($_POST['historyPageIndex'])){
+			$historyPageIndex = $_POST['historyPageIndex'];
+			$history = $chat->getHistory($fromUser, $toUser, $historyPageIndex);
+		}else{
+			$history = $chat->getHistory($fromUser, $toUser);
+		}
+
+
 		echo json_encode($history);
 		break;
 
 	case "updateHistory":
 
-		$history = $chat->updateHistory($fromUser);
+		$history = $chat->updateHistory($fromUser, $toUser);
 		echo json_encode($history);
 		break;
 
@@ -54,4 +61,3 @@ switch ($action){
 		break;
 }
 
-?>
